@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "outofcloud-analytics",
+  "private_key_id": "ce487dfb3030b863da4c538da1ad87e5ebd83e1c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDbedg23HRPhokK\nRdbv9HWpqCjXaYER9divyX7rOPmDDk8j2eLvZ+ZC48T1zg9jQE8GRL47elHkbXNt\nT8+XwPapm+EnUG7GG9j6t5PhR8hhNkHAxIDpyCxfdJ7v9kEYcoVo2PQ91JmnTNbR\nP3P1pR4RwMsTIlHT6L/k4ItH7X+Bgae+cRiIqPTCZgDr7HJCmc0CsTFWWJscm6NR\n4zgdf4auweLsJcxvi/UVpxCsSVh3KDD1uneyImpf+E+64/u1LzRHcWlDuttSuV+X\ndD5buiLZ26QhZCkkee0dvsnrelZBNlWU05Vd/zEpz/gAT8wFSaLFkWJaJ/uQclBy\nC8qkbW2vAgMBAAECggEAFeX7X8XxSPoIdGDxiDGhB9OCd7PMMAmSnD+DjV667ouf\n89jKns6EGAp33Xq46FNDT0HOpUqYHy2YhcCf2uli8xtdhLmuw8+Ff8aPV7v8z05F\nk0FIB4t0efW94f11E0Zh70suW3j598pf6LLnFAxsiqLs4DTda0Je2yxYWU3mGfqx\ndQvcFbRp6VD6XLwa/tpOLU37HR35Emr7Bn0Ulq2C+kAR2uBfa4zrTZ/Ag/G7r2OS\nObAGKbgMLUW/SNKB+0flPlj9KC3PPLSZkNnpBNnfahnKZo6prusbUWOJMeeJdt4I\np+FVYQhQkYHxmOriKXRjUpGobNW/d/NM20MEfNVI4QKBgQD3PSCHAOwn3K0193rP\nCO1JJQ5Kotf69dr6T1qrDkjISwv/eqKI3wGP2/GDK0gLTa/6otW9f1/eHkqQTYTt\n1YAhnPT62gRjLnTPMIYuUPz+pxNJHSeEvPA8Ton9RWv2ReO8ALwArBJfznweyDg6\ncRNR+YF/YpnSn/3SApXjU4KNsQKBgQDjQNykGq+fOF8I+rCFyU1rVYu1SlfI+B+K\nsIy8rMmbmD9gzYt5R/GZjB3/rSf+76KqZIBGZ0pmxxqZ8EvM2rd4NfenpKxuQXra\npsO1L08UxkBoeG5GTg9Cn2kAlUV7uRnZ+67EU239BADs4LDqPWVN0svsQ+38jii/\nKsH7NcGpXwKBgQDJRkk5vuWCWiPkwFGJRKIwHuuwlTuxQf+AMaQFh7522Kmu1b6G\nIM6buBm4iD7BfQBb0b6h45U/NXfMXF9wY5RJSQcjROO3frV3ivBhumsMQSXxKrvm\nUw5cei/aMW7/8cvBXPOwtGTM/EONp8Amy7FH1hC3jKTflIJFOvedNnodMQKBgH3h\n/RbOTYBmSoZ/z26cns0ZGwW2g8Aoadh6icst75PIFzt5QIxTJOrIagmqEmCuv62h\ndEkLiHQ8UGj7ahG1CjKFuoTbvERq8zHRdNGVvjmkxCLaq0M4lE10XkbbaRzq4P4V\n466PBHtGT3jn0jg/ADHG1f0vd9IRsVKLzd5o3bkDAoGBAK2i0ttB1j9We2momd0C\nM60vtSUd5wy/5hoZKi9pZHlZDI3YNcjTVO2brgClfnMDTrb2qoH/dKnoCl4zMy9M\nw2kgYNlGoy7ce35KEw9EtGo7gcztQHCcHHYV1eYOsoMc6SQ6eoM/QITesn6EGg6R\nFAcaE5iklsjMu2118rzS5aVi\n-----END PRIVATE KEY-----\n",
+  "client_email": "perek-test@outofcloud-analytics.iam.gserviceaccount.com",
+  "client_id": "105888776991422642378",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/perek-test%40outofcloud-analytics.iam.gserviceaccount.com"
+}

@@ -31,6 +31,11 @@ class Patcher():
         self.t = triggers
         self.patch = self.switch()
 
+
+    def switch(self):
+        """Performs tabwise patch enrichment"""
+        return getattr(self, self.methods[self.type])()
+
     def get_cell_addrs_dict(self):
         with open('data/cell_dicts.pkl', 'rb') as f:
             d = pkl.load(f)
@@ -97,6 +102,10 @@ class Patcher():
                     column, str(self.df.loc[self.df.name == name, key].values[0])))
         return patch
 
-    def switch(self):
-        """Performs tabwise patch enrichment"""
-        return getattr(self, self.methods[self.type])()
+    def check_match(self, df, actual_values):
+        """Checks whether all known campaigns belong to a dictionary
+            -> df: dataframe with first column that needs check (name)
+            -> actual_values: values in column (name)
+            <- new_values: list of unknown campaigns
+        """
+        return list(self.df.name.loc[~self.df.name.map(actual_values).notna()])

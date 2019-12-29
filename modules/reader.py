@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import re
+import zipfile
 
 def get_report(filename, sheet):
     """
@@ -9,19 +10,23 @@ def get_report(filename, sheet):
     -> sheet: desired sheet name
     """
     df = pd.read_excel(filename, sheet_name=sheet)
-    ind = df.loc[df.iloc[:,0] == 'Brand'].index[0]
-    header = ['brand', 'campaign', 'tag', 'date',
-              'name', 'channel', 'subject', 'preview_url',
-              'sent', 'delivered', 'opened', 'clicked',
-              'unfollowed', 'revenue', 'orders']
-    df = df.iloc[ind+1:,:15]
+    ind = df.loc[df.iloc[:,0] == 'Бренд'].index[0]
+    df = df.iloc[ind+2:, 4:-1]
+    header = ['name', 'channel', 'subject', 'preview_url',
+              'sent', 'delivered', 'deliver_rate', 'opened',
+              'open_rate', 'clicked', 'click_rate', 'CTR',
+              'unfollowed', 'unfollow_rate', 'revenue', 'orders',
+              'avg_bill', 'order_conversion']
     df.columns = header
-    df = df.fillna(method='ffill')
     df[['sent', 'delivered', 'opened', 'clicked',
         'unfollowed', 'revenue', 'orders']] = \
     df[['sent', 'delivered', 'opened', 'clicked',
         'unfollowed', 'revenue', 'orders']].astype('int64')
-    return df
+    df[['deliver_rate', 'open_rate', 'click_rate', 'CTR',
+        'unfollow_rate', 'avg_bill', 'order_conversion']] = \
+    df[['deliver_rate', 'open_rate', 'click_rate', 'CTR',
+        'unfollow_rate', 'avg_bill', 'order_conversion']].astype('float64')
+    return df[(df.name != '(Для тестов)') & (df.sent != 0)]
 
 def get_test_control(file_test, file_control):
     """
@@ -109,3 +114,7 @@ def append_new_orders(orders, new_orders):
     orders = orders.append(new_orders, ignore_index = True)
     orders.to_feather('data/cohort/orders.f')
     return orders
+
+def unprotect_excel(excel_file):
+    with zipfile.ZipFile(excel_file, 'r') as zip:
+        zip.extractall('data/report')

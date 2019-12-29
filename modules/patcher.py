@@ -27,19 +27,13 @@ class Patcher():
         self.df = df
         self.type = type
         self.limit = limit
-        self.d = self.get_cell_addrs_dict()
+        self.d = get_dictionary('data/cell_dicts.pkl')
         self.t = triggers
         self.patch = self.switch()
-
 
     def switch(self):
         """Performs tabwise patch enrichment"""
         return getattr(self, self.methods[self.type])()
-
-    def get_cell_addrs_dict(self):
-        with open('data/cell_dicts.pkl', 'rb') as f:
-            d = pkl.load(f)
-        return d
 
     def get_group_increments(self):
         """Incremental test/control weekly, tab 2 on dashboard"""
@@ -97,7 +91,7 @@ class Patcher():
         patch = []
         rows = [x for x in range(len(self.df.name.unique()))]
         for ind, name in zip(rows, self.df.name.unique()):
-            for key, column in zip(self.t.columns.keys(), self.d[self.type].values()):
+            for key, column in zip(self.t.offline_attr.keys(), self.d[self.type].values()):
                 patch.append(gspread.models.Cell(self.limit+ind, \
                     column, str(self.df.loc[self.df.name == name, key].values[0])))
         return patch
@@ -109,3 +103,60 @@ class Patcher():
             <- new_values: list of unknown campaigns
         """
         return list(self.df.name.loc[~self.df.name.map(actual_values).notna()])
+
+def check_new_campaigns(campaigns):
+    """User interface to update campaign-trigger dictionary
+        -> campaigns: list of unknown campaigns
+    """
+    def get_new_name(name, channel):
+        print("""Нажмите только 'Enter', если название компании Вас устраивает:
+Введите новое название для отображения в Google Sheets""")
+        new_name = input()
+        if new_name == '':
+            triggers.triggers[channel].update({name:name})
+        else:
+            triggers.triggers[channel].update({name:new_name})
+
+    n_emails = 0
+    n_seasonal = 0
+    n_wp = 0
+
+    maxlen = len(campaigns)
+    print("""Определите категорию кампании для {n} новых:
+Введите 0 для сброса ввода и возврату к первому значению""".format(n=maxlen))
+
+    i = 0
+    new_names = []
+    while(i != maxlen):
+        print("""Нажмите 'Enter' для Email
+        '1' для Web-push
+        '2' для сезонной
+        '3' для SMS
+        """)
+        v = input('-> ' + campaigns[i] + ': \n')
+        if v == '':
+            get_new_name(campaigns[i], 'email'); i+=1; n_emails+=1
+        elif v == '1':
+            get_new_name(campaigns[i], 'wp'); i+=1; n_wp+=1
+        elif v == '2':
+            get_new_name(campaigns[i], 'seasonal'); i+=1; n_seasonal+=1
+        elif v == '3':
+            get_new_name(campaigns[i], 'sms'); i+=1;
+        elif v == '0':
+            return check_new_campaigns(campaigns)
+        else:
+            print("Повторите ввод в согласии с инструкцией\n")
+
+    return {'email':n_emails,
+            'seasonal':n_seasonal,
+            'wp':n_wp,}
+    #TODO 1) calculate deltas 2) init start dict 3) formatting
+
+def put_dictionary(filename, obj):
+    with open(filename, 'wb') as f:
+        pkl.dump(obj, f, protocol=pkl.HIGHEST_PROTOCOL)
+
+def get_dictionary(filename):
+    with open(filename, 'rb') as f:
+        d = pkl.load(f)
+    return d

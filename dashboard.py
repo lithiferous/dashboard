@@ -45,15 +45,16 @@ class Dashboard:
                 patch = s.Patcher(df, sheets.get(name), sheet.max_rows).patch
             sheet.update_batch(patch)
 
+        df = r.get_report(self.report, "Свод. данные (online + offline)")
         for sheet in sheets.keys():
             if '2' in sheet:
                 patch_wrapper(sheet, self.orders, self.connector, 'x')
             if '3' in sheet:
-                df = r.get_report(self.report, "Свод. данные (online)")
+                df = df[(df.sent != 0) & (df.channel != 'Ручные рассылки')] #=?
                 patch_wrapper(sheet, df, self.connector, 'x')
             elif '5' in sheet:
                 df = r.get_report(self.report, "Свод. данные (offline)")
-                df = df[df.sent != 0]
+                df = df[(df.sent != 0) & (df.channel == 'Ручные рассылки')]
                 patch_wrapper(sheet, df, self.connector, 'y')
 
     def run_all(self):

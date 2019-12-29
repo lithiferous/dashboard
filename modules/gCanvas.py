@@ -53,6 +53,10 @@ class gCanvas:
         time.sleep(self.timeout)
         return self.sheet.findall(pattern)
 
+    def find(self, pattern):
+        time.sleep(timeout)
+        return self.sheet.find(pattern)
+
     def update_cell(self, row, col, new_val):
         time.sleep(self.timeout)
         self.sheet.update_cell(row, col, new_val)

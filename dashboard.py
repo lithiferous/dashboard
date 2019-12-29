@@ -39,6 +39,8 @@ class Dashboard:
 
         def patch_wrapper(name, df, connector, limit):
             sheet = g.gCanvas(self.connector.get_sheet_by_name(name))
+            ws = conn.get_sheet_by_name("3. Триггеры — стат. нед.")
+            gdf = get_as_dataframe(ws)
             if limit == 'x':
                 patch = s.Patcher(df, sheets.get(name), sheet.max_cols).patch
             else:

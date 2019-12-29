@@ -47,12 +47,77 @@ class Patcher():
 
     def get_campaigns_online(self):
         """Online campaigns tab 3 (weekly) or tab 4 (monthly) on dashboard"""
-        self.df = self.df[['name', 'sent', 'delivered', 'opened',
-                           'clicked', 'unfollowed', 'revenue', 'orders']]
-        pd.reset_option('mode.chained_assignment')
-        with pd.option_context('mode.chained_assignment', None):
-            self.df['name'] = self.df.name.map(self.t.triggers)
-        self.df = self.df[self.df.name.notna()]
+
+        def create_new_campaigns(gdf, new_campaigns, max_cols):
+            """User interface to update campaign-trigger dictionary
+                -> gdf: gspread-dataframe
+                -> campaigns: list of unknown campaigns
+                -> max_cols: column for current period (row 3)
+            """
+            #Slice google sheet array based on start indices for channels
+            outlay = s.get_dictionary('config/dictionaries/outlay3.pkl')
+            email = gdf.iloc[outlay['email']:outlay['wp']]
+            wp = gdf.iloc[outlay['wp']:outlay['seasonal']]
+            seasonal = gdf.iloc[outlay['seasonal']:outlay['sms']]
+            sms = gdf.iloc[outlay['sms']:]
+            del gdf
+
+            def append_campaign(dataframe, channel, trigger):
+                """Extends dataframe for each channel's new campaign
+                    -> dataframe - email/wp/seasonal/sms
+                    -> channel - string representation of channel
+                    -> trigger -> new campaign name
+                """
+                campaign = t.triggers[channel].get(trigger)
+                dataframe = dataframe.append(pd.Series(name = campaign))
+                for key, attribution in online_attribution.items():
+                    dataframe = dataframe.append(pd.Series(name = attribution))
+                    dataframe.iloc[-1, max_cols] = mb_df.loc[df.name == trigger, key]
+                dataframe = dataframe.append(pd.Series())
+
+            def get_new_name(name, channel):
+                print("Нажмите только 'Enter', если название компании Вас устраивает:\n\tВведите новое название для отображения в Google Sheets")
+                new_name = input()
+                if new_name == '':
+                    triggers.triggers[channel].update({name:name})
+                else:
+                    triggers.triggers[channel].update({name:new_name})
+
+            maxlen = len(new_campaigns)
+            print("Определите категорию кампании для {n} новых:\n".format(n=maxlen))
+
+            i = 0
+            new_names = []
+            while(i != maxlen):
+                print("Нажмите 'Enter' для Email\n\t'1' для Web-push\n\t'2' для сезонной\n'3' для SMS\n")
+                v = input('-> ' + new_campaigns[i] + ': \n')
+                if v == '':
+                    get_new_name(new_campaigns[i], 'email'); i+=1;
+                    append_campaign(email, 'email', new_campaigns[i-1])
+                elif v == '1':
+                    get_new_name(new_campaigns[i], 'wp'); i+=1;
+                    append_campaign(wp, 'wp', new_campaigns[i-1])
+                elif v == '2':
+                    get_new_name(new_campaigns[i], 'seasonal'); i+=1;
+                    append_campaign(seasonal, 'seasonal', new_campaigns[i-1])
+                elif v == '3':
+                    get_new_name(new_campaigns[i], 'sms'); i+=1;
+                    append_campaign(sms, 'sms', new_campaigns[i-1])
+                else:
+                    print("Повторите ввод в согласии с инструкцией\n")
+
+            #Merge dictionaries
+            df = email.append([wp, seasonal, sms], ignore_index=True)
+            del email, wp, seasonal, sms
+
+            #New channel start indices e.g. web-push row 379
+            def reindex_outlay(dataframe):
+                for channel in t.triggers.keys():
+                    trigger = list(t.triggers[channel].values())[0]
+                    outlay[channel] = gdf[gdf.columns[0]][gdf[gdf.columns[0]] == trigger].index
+                put_dictionary(outlay, 'config/dictionaries/outlay3.pkl')
+            reindex_outlay(df)
+            return df
 
         def get_campaign_info(df, name, column):
             """Locates specific value for named campaign"""
@@ -60,6 +125,21 @@ class Patcher():
             except: res = 0
             return res
 
+        def build_patch(dataframe):
+            """Returns df as a list of cells to patch for gspread update"""
+            y, x = dataframe.shape
+            updates = []
+            values = []
+            for value_row in dataframe.values:
+                values.append(value_row)
+            for y_idx, value_row in enumerate(values):
+                for x_idx, cell_value in enumerate(value_row):
+                    updates.append((y_idx+row,
+                                    x_idx+col,
+                                    cell_value)))
+            return dataframe
+
+        new_campaigns = list(self.df.name.loc[~self.df.name.map(actual_values).notna()])
         patch = []
         keys = self.df.columns[2:]
         for name, rows in self.d[self.type].items():
@@ -96,61 +176,6 @@ class Patcher():
                     column, str(self.df.loc[self.df.name == name, key].values[0])))
         return patch
 
-    def check_match(self, df, actual_values):
-        """Checks whether all known campaigns belong to a dictionary
-            -> df: dataframe with first column that needs check (name)
-            -> actual_values: values in column (name)
-            <- new_values: list of unknown campaigns
-        """
-        return list(self.df.name.loc[~self.df.name.map(actual_values).notna()])
-
-def check_new_campaigns(campaigns):
-    """User interface to update campaign-trigger dictionary
-        -> campaigns: list of unknown campaigns
-    """
-    def get_new_name(name, channel):
-        print("""Нажмите только 'Enter', если название компании Вас устраивает:
-Введите новое название для отображения в Google Sheets""")
-        new_name = input()
-        if new_name == '':
-            triggers.triggers[channel].update({name:name})
-        else:
-            triggers.triggers[channel].update({name:new_name})
-
-    n_emails = 0
-    n_seasonal = 0
-    n_wp = 0
-
-    maxlen = len(campaigns)
-    print("""Определите категорию кампании для {n} новых:
-Введите 0 для сброса ввода и возврату к первому значению""".format(n=maxlen))
-
-    i = 0
-    new_names = []
-    while(i != maxlen):
-        print("""Нажмите 'Enter' для Email
-        '1' для Web-push
-        '2' для сезонной
-        '3' для SMS
-        """)
-        v = input('-> ' + campaigns[i] + ': \n')
-        if v == '':
-            get_new_name(campaigns[i], 'email'); i+=1; n_emails+=1
-        elif v == '1':
-            get_new_name(campaigns[i], 'wp'); i+=1; n_wp+=1
-        elif v == '2':
-            get_new_name(campaigns[i], 'seasonal'); i+=1; n_seasonal+=1
-        elif v == '3':
-            get_new_name(campaigns[i], 'sms'); i+=1;
-        elif v == '0':
-            return check_new_campaigns(campaigns)
-        else:
-            print("Повторите ввод в согласии с инструкцией\n")
-
-    return {'email':n_emails,
-            'seasonal':n_seasonal,
-            'wp':n_wp,}
-    #TODO 1) calculate deltas 2) init start dict 3) formatting
 
 def put_dictionary(filename, obj):
     with open(filename, 'wb') as f:

@@ -1,8 +1,9 @@
 from datetime import datetime as dt
-import pandas as pd
-import pickle as pkl
 import gspread
 import imp
+import numpy as np
+import pandas as pd
+import pickle as pkl
 import time
 
 triggers = imp.load_source('triggers', 'config/triggers.py')
@@ -58,13 +59,18 @@ class Patcher():
                 -> campaigns: list of unknown campaigns
                 -> max_cols: column for current period (row 3)
             """
+            def filter_na(df):
+                mask = pd.Series(x is not np.nan for x in df.index.values)
+                df = df[mask.values].reset_index().append(pd.Series(), ignore_index=True)
+                return df.set_index(df.columns[0])
+
             #Slice google sheet array based on start indices for channels
             outlay = get_dictionary('config/dictionaries/outlay3.pkl')
             main = gdf.iloc[:outlay['email']]
             email = gdf.iloc[outlay['email']:outlay['wp']]
             wp = gdf.iloc[outlay['wp']:outlay['seasonal']]
             seasonal = gdf.iloc[outlay['seasonal']:outlay['sms']]
-            sms = gdf.iloc[outlay['sms']:]
+            sms = filter_na(gdf.iloc[outlay['sms']:])
             del gdf
 
             def append_campaign(df, channel, trigger):
@@ -76,10 +82,9 @@ class Patcher():
                 campaign = triggers.triggers[channel].get(trigger)
                 df = df.append(pd.Series(name = campaign))
                 for key, attribution in online_attr.items():
-                    if channel != 'sms' and key == 'sent':
-                        df = df.append(pd.Series(name = attribution), \
-                                       ignore_index=True)
-                df = df.append(pd.Series(), ignore_index=True)
+                    df = df.append(pd.Series(name = attribution))
+                df = df.reset_index().append(pd.Series(), ignore_index=True)
+                return df.set_index(df.columns[0])
 
             def get_new_name(name, channel):
                 print("Нажмите только 'Enter', если название компании Вас устраивает:\nВведите новое название для отображения в Google Sheets")
@@ -99,21 +104,20 @@ class Patcher():
                 v = input('-> ' + new_campaigns[i] + ': \n')
                 if v == '':
                     get_new_name(new_campaigns[i], 'email'); i+=1;
-                    append_campaign(email, 'email', new_campaigns[i-1])
+                    email = append_campaign(email, 'email', new_campaigns[i-1])
                 elif v == '1':
                     get_new_name(new_campaigns[i], 'wp'); i+=1;
-                    append_campaign(wp, 'wp', new_campaigns[i-1])
+                    wp = append_campaign(wp, 'wp', new_campaigns[i-1])
                 elif v == '2':
                     get_new_name(new_campaigns[i], 'seasonal'); i+=1;
-                    append_campaign(seasonal, 'seasonal', new_campaigns[i-1])
+                    seasonal = append_campaign(seasonal, 'seasonal', new_campaigns[i-1])
                 elif v == '3':
                     get_new_name(new_campaigns[i], 'sms'); i+=1;
-                    append_campaign(sms, 'sms', new_campaigns[i-1])
+                    sms = append_campaign(sms, 'sms', new_campaigns[i-1])
                 else:
                     print("Повторите ввод в согласии с инструкцией\n")
 
-            #Merge dictionaries
-            df = main.append([email, wp, seasonal, sms], ignore_index=True)
+            self.gdf = main.append([email, wp, seasonal, sms])
             del main, email, wp, seasonal, sms
 
             #New channel start indices e.g. web-push row 379
@@ -121,12 +125,11 @@ class Patcher():
                 """Update start indices for each channel email/wp/seasonal/sms
                 -> df: dataframe from gspread get_as_dataframe
                 """
-                for channel in triggers.triggers.keys():
-                    trigger = list(triggers.triggers[channel].values())[0]
-                    outlay[channel] = df[df.columns[0]][df[df.columns[0]] == trigger].index[0]
-                put_dictionary('config/dictionaries/outlay3.pkl', outlay)
-            reindex_outlay(df)
-            return df
+                df = df.reset_index()
+                for channel in t.triggers.keys():
+                    trigger = list(t.triggers[channel].values())[0]
+                    outlay[channel] = np.where(tmp == trigger)[0][0]
+                s.put_dictionary('config/dictionaries/outlay3.pkl', outlay)
 
         def update_campaigns(df, gdf, max_cols):
             """Assigns new campaign's attribution values to dataframe
@@ -139,20 +142,21 @@ class Patcher():
                 try: res = df.loc[df.name == name, column].values[0]
                 except: res = 0
                 return res
-
             for channel in triggers.triggers.keys():
                 for trigger, campaign in triggers.triggers[channel].items():
                     campaign_index = gdf[gdf.columns[0]].loc[gdf[gdf.columns[0]] == campaign].index[0]
                     for index, row in gdf.iloc[campaign_index:].iterrows():
                         if pd.isnull(row[0]):
                             break
-                        for attrib_mb, attrib_gsh in online_attr.items():
-                            if row[0] == attrib_gsh:
-                                cell_value = get_campaign_info(df, trigger, attrib_mb)
-                                gdf.iloc[index, max_cols] = cell_value
+                        for  attr_mb, attr_gsh in online_attr.items():
+                            if attr_gsh == row[0]:
+                                gdf.iloc[index, max_cols] = get_campaign_info(df, trigger, attr_mb)
+            return gdf
 
         def build_patch(df):
             """Returns df as a list of cells to patch for gspread update"""
+            row=1
+            col=1
             y, x = df.shape
             updates = []
             values = []
@@ -160,18 +164,19 @@ class Patcher():
                 values.append(value_row)
             for y_idx, value_row in enumerate(values):
                 for x_idx, cell_value in enumerate(value_row):
-                    updates.append((y_idx+row,
-                                    x_idx+col,
-                                    cell_value))
+                    updates.append(gspread.models.Cell(y_idx+row,
+                                                       x_idx+col,
+                                                       cell_value))
             return updates
+
         actual_values = []
-        for channel, values in self.t.triggers.items():
+        for channel, values in triggers.triggers.items():
             for df_trigger in values.keys():
                 actual_values.append(df_trigger)
         new_campaigns = list(self.df.name.loc[~self.df.name.isin(actual_values)])
-        self.gdf = create_new_campaigns(self.gdf, new_campaigns, self.limit - 1)
-        update_campaigns(self.df, self.gdf, self.limit - 1)
-        return build_patch(self.gdf)
+        create_new_campaigns(self.gdf, new_campaigns, self.limit - 1)
+        #self.gdf = update_campaigns(self.df, self.gdf, self.limit - 1)
+        #return build_patch(self.gdf)
 
     def get_campaigns_offline(self):
         """Offline campaigns weekly, tab 5 on dashboard"""

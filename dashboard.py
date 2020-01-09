@@ -37,27 +37,28 @@ class Dashboard:
                   '7. Когортный по вовлечению':6,
                   '8. Страт. сегментация':7}
 
-        def patch_wrapper(name, df, connector, limit):
+        def patch_wrapper(name, df, connector, limit, gdf=None):
             sheet = g.gCanvas(self.connector.get_sheet_by_name(name))
-            ws = conn.get_sheet_by_name("3. Триггеры — стат. нед.")
-            gdf = get_as_dataframe(ws)
             if limit == 'x':
-                patch = s.Patcher(df, sheets.get(name), sheet.max_cols).patch
+                patch = s.Patcher(df, sheets.get(name), sheet.max_cols, gdf).patch
             else:
                 patch = s.Patcher(df, sheets.get(name), sheet.max_rows).patch
-            sheet.update_batch(patch)
+            return patch
+            #sheet.update_batch(patch)
 
         df = r.get_report(self.report, "Свод. данные (online + offline)")
+        results = []
         for sheet in sheets.keys():
             if '2' in sheet:
-                patch_wrapper(sheet, self.orders, self.connector, 'x')
+                results.append(patch_wrapper(sheet, self.orders, self.connector, 'x'))
             if '3' in sheet:
-                df = df[(df.sent != 0) & (df.channel != 'Ручные рассылки')] #=?
-                patch_wrapper(sheet, df, self.connector, 'x')
+                df = df[df.channel != 'Ручные рассылки']
+                gdf = g.gCanvas(self.connector.get_sheet_by_name(sheet)).get_as_df()
+                results.append(patch_wrapper(sheet, df, self.connector, 'x', gdf))
             elif '5' in sheet:
-                df = r.get_report(self.report, "Свод. данные (offline)")
-                df = df[(df.sent != 0) & (df.channel == 'Ручные рассылки')]
-                patch_wrapper(sheet, df, self.connector, 'y')
+                df = df[df.channel == 'Ручные рассылки']
+                results.append(patch_wrapper(sheet, df, self.connector, 'y'))
+        return results
 
     def run_all(self):
         self.connector = g.Connection(c.name)

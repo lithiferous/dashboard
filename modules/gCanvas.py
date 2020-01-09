@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
+from gspread_dataframe import *
 import time
 
 class Connection:
@@ -41,6 +42,9 @@ class gCanvas:
         self.max_cols = self.get_width()
         self.max_rows = self.get_height()
         self.timeout = timeout if timeout != None else None
+
+    def get_as_df(self):
+        return get_as_dataframe(self.sheet, index_col=0)
 
     def get_height(self):
         return len(self.sheet.col_values(1)) + 1

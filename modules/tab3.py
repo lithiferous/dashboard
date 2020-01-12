@@ -1,10 +1,19 @@
-from patcher import dpath
 from gspread.models import Cell
+import imp
 import numpy as np
 import pandas as pd
 import pickle as pkl
 
-attribution = get_dict_value('/attribution.pkl', 3)
+dpath = 'config/data/'
+
+def get_dict(filename):
+    with open(filename, 'rb') as f:
+        return pkl.load(f)
+
+def get_dict_value(filename, key):
+    return get_dict(dpath + filename).get(key)
+
+attribution = get_dict_value('attribution.pkl', 2)
 
 def filter_na(df):
     mask = pd.Series(x is not np.nan for x in df.index.values)
@@ -74,7 +83,7 @@ def reindex_outlay(df, triggers):
     for channel in triggers.keys():
         trigger = list(triggers[channel].values())[0]
         outlay[channel] = np.where(tmp == trigger)[0][0]
-    s.put_dictionary('config/dictionaries/outlay3.pkl', outlay)
+    s.put_dictionary(dpath+'outlay3.pkl', outlay)
 
 def update_campaigns(df, gdf, max_cols,
                      triggers, attribution):

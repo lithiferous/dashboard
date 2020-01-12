@@ -1,5 +1,4 @@
 from datetime import datetime as dt
-from tab3 import *
 import gspread
 import imp
 import numpy as np
@@ -7,7 +6,8 @@ import pandas as pd
 import pickle as pkl
 import time
 
-dpath = 'config/data'
+dpath = 'config/data/'
+tab3 = imp.load_source('online_campaigns', 'modules/tab3.py')
 
 class Patcher():
     methods = {0: None,
@@ -32,7 +32,7 @@ class Patcher():
         self.limit = limit
         self.gdf = gdf if isinstance(gdf, pd.DataFrame) else None
         self.d = get_dict('data/cell_dicts.pkl')
-        self.t = get_dict_value('/triggers.pkl', type)
+        self.t = get_dict_value('triggers.pkl', type)
         self.patch = self.switch()
 
     def switch(self):
@@ -51,7 +51,7 @@ class Patcher():
 
     def get_campaigns_online(self):
         """Online campaigns tab 3 (weekly) or tab 4 (monthly) on dashboard"""
-        attr = get_dict_value('/attribution.pkl', 3)
+        attr = get_dict_value('attribution.pkl', self.type)
         def create_new_campaigns(gdf, new_campaigns, max_cols):
             """User interface to update campaign-trigger dictionary
                 -> gdf: gspread-dataframe
@@ -59,16 +59,16 @@ class Patcher():
                 -> max_cols: column for current period (row 3)
             """
             #Slice google sheet array based on start indices for channels
-            outlay = get_dict('config/data/outlay3.pkl')
+            outlay = get_dict(dpath+'outlay3.pkl')
             main = gdf.iloc[:outlay['email']]
             email = gdf.iloc[outlay['email']:outlay['wp']]
             wp = gdf.iloc[outlay['wp']:outlay['seasonal']]
             seasonal = gdf.iloc[outlay['seasonal']:outlay['sms']]
-            sms = filter_na(gdf.iloc[outlay['sms']:])
+            sms = tab3.filter_na(gdf.iloc[outlay['sms']:])
             del gdf
-            self.gdf = check_new_groups(new_campaigns, main, email, wp,
-                                        seasonal, sms, self.t, self.type)
-            #reindex_outlay(self.gdf, self.t)
+            self.gdf = tab3.check_new_groups(new_campaigns, main, email, wp,
+                                             seasonal, sms, self.t, self.type)
+            #tab3.reindex_outlay(self.gdf, self.t)
             del main, email, wp, seasonal, sms
 
         actual_values = []
@@ -77,12 +77,12 @@ class Patcher():
                actual_values.append(df_trigger)
         new_campaigns = list(self.df.name.loc[~self.df.name.isin(actual_values)])
         create_new_campaigns(self.gdf, new_campaigns, self.limit - 1)
-        self.gdf = update_campaigns(self.df, self.gdf, self.limit - 1, self.t, attr)
-        return build_patch(self.gdf)
+        self.gdf = tab3.update_campaigns(self.df, self.gdf, self.limit - 1, self.t, attr)
+        return tab3.build_patch(self.gdf)
 
     def get_campaigns_offline(self):
         """Offline campaigns weekly, tab 5 on dashboard"""
-        attr = get_attribution(self.type, 5)
+        attr = get_dict_value('attribution.pkl', self.type)
         def get_channel(string):
             string = string.lower()
             if 'sms' in string:
@@ -107,7 +107,7 @@ class Patcher():
         return patch
 
 
-def put_dictionary(filename, obj):
+def put_dict(filename, obj):
     with open(filename, 'wb') as f:
         pkl.dump(obj, f, protocol=pkl.HIGHEST_PROTOCOL)
 
@@ -118,7 +118,7 @@ def get_dict(filename):
 def update_dictionary(filename, key, value):
     tmp = get_dict(filename)
     tmp[key] = value
-    put_dictionary(filename, tmp)
+    put_dict(filename, tmp)
 
 def get_dict_value(filename, key):
     return get_dict(dpath + filename).get(key)

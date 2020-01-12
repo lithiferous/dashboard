@@ -37,14 +37,14 @@ class Dashboard:
                   '7. Когортный по вовлечению':6,
                   '8. Страт. сегментация':7}
 
-        def patch_wrapper(name, df, connector, limit, gdf=None):
+        def patch_wrapper(name, df, connector, limit, gdf):
             sheet = g.gCanvas(self.connector.get_sheet_by_name(name))
             if limit == 'x':
                 patch = s.Patcher(df, sheets.get(name), sheet.max_cols, gdf).patch
             else:
                 patch = s.Patcher(df, sheets.get(name), sheet.max_rows).patch
             return patch
-            #sheet.update_batch(patch)
+            sheet.update_batch(patch)
 
         df = r.get_report(self.report, "Свод. данные (online + offline)")
         results = []
@@ -52,12 +52,12 @@ class Dashboard:
             if '2' in sheet:
                 results.append(patch_wrapper(sheet, self.orders, self.connector, 'x'))
             if '3' in sheet:
-                df = df[df.channel != 'Ручные рассылки']
+                data = df[df.channel != 'Ручные рассылки']
                 gdf = g.gCanvas(self.connector.get_sheet_by_name(sheet)).get_as_df()
-                results.append(patch_wrapper(sheet, df, self.connector, 'x', gdf))
+                results.append(patch_wrapper(sheet, data, self.connector, 'x', gdf))
             elif '5' in sheet:
-                df = df[df.channel == 'Ручные рассылки']
-                results.append(patch_wrapper(sheet, df, self.connector, 'y'))
+                data = df[df.channel == 'Ручные рассылки']
+                results.append(patch_wrapper(sheet, data, self.connector, 'y', None))
         return results
 
     def run_all(self):
@@ -73,7 +73,7 @@ if __name__ == '__main__':
                     help="MindBox campaigns file xlsx")
     p.add_argument('-o', dest="orders_file", required=True, type=str,
                     help="Orders file csv")
-    p.add_argument('-c', dest="clients_file", required=True, type=str,
+    p.add_argument('-c', dest="clients_file", type=str,
                     help="Clients file feather fmt")
     args = p.parse_args()
     d = Dashboard(args.report_file,

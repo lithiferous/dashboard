@@ -6,7 +6,7 @@ import pandas as pd
 import pickle as pkl
 import time
 
-triggers = imp.load_source('triggers', 'config/triggers.py')
+dpath = 'config/data'
 
 class Patcher():
     methods = {0: None,
@@ -31,7 +31,7 @@ class Patcher():
         self.limit = limit
         self.gdf = gdf if isinstance(gdf, pd.DataFrame) else None
         self.d = get_dictionary('data/cell_dicts.pkl')
-        self.t = triggers
+        self.t = get_dict_value('/triggers.pkl', limit)
         self.patch = self.switch()
 
     def switch(self):
@@ -50,9 +50,7 @@ class Patcher():
 
     def get_campaigns_online(self):
         """Online campaigns tab 3 (weekly) or tab 4 (monthly) on dashboard"""
-
-        online_attr = get_dictionary('config/dictionaries/online_attr.pkl')
-
+        attr = get_dict_value('/attribution.pkl', self.type)
         def create_new_campaigns(gdf, new_campaigns, max_cols):
             """User interface to update campaign-trigger dictionary
                 -> gdf: gspread-dataframe
@@ -79,9 +77,9 @@ class Patcher():
                     -> channel - string representation of channel
                     -> trigger -> new campaign name
                 """
-                campaign = triggers.triggers[channel].get(trigger)
+                campaign = self.t[channel].get(trigger)
                 df = df.append(pd.Series(name = campaign))
-                for key, attribution in online_attr.items():
+                for key, attribution in attr.items():
                     df = df.append(pd.Series(name = attribution))
                 df = df.reset_index().append(pd.Series(), ignore_index=True)
                 return df.set_index(df.columns[0])
@@ -117,6 +115,7 @@ class Patcher():
                 else:
                     print("Повторите ввод в согласии с инструкцией\n")
 
+#update_dictionary(dpath + '/triggers.pkl', self.type, self.t)
             self.gdf = main.append([email, wp, seasonal, sms])
             del main, email, wp, seasonal, sms
 
@@ -125,64 +124,64 @@ class Patcher():
                 """Update start indices for each channel email/wp/seasonal/sms
                 -> df: dataframe from gspread get_as_dataframe
                 """
-                df = df.reset_index()
-                for channel in t.triggers.keys():
-                    trigger = list(t.triggers[channel].values())[0]
+                tmp = df.index.values
+                for channel in self.t.keys():
+                    trigger = list(self.t[channel].values())[0]
                     outlay[channel] = np.where(tmp == trigger)[0][0]
-                s.put_dictionary('config/dictionaries/outlay3.pkl', outlay)
+#s.put_dictionary('config/dictionaries/outlay3.pkl', outlay)
+            reindex_outlay(self.gdf)
 
-        def update_campaigns(df, gdf, max_cols):
-            """Assigns new campaign's attribution values to dataframe
-            -> df: dataframe from MindBox report
-            -> gdf: dataframe gspread get_as_dataframe
-            -> max_cols: period column
-            """
-            def get_campaign_info(df, name, column):
-                """Locates specific value for named campaign"""
-                try: res = df.loc[df.name == name, column].values[0]
-                except: res = 0
-                return res
-            for channel in triggers.triggers.keys():
-                for trigger, campaign in triggers.triggers[channel].items():
-                    campaign_index = gdf[gdf.columns[0]].loc[gdf[gdf.columns[0]] == campaign].index[0]
-                    for index, row in gdf.iloc[campaign_index:].iterrows():
-                        if pd.isnull(row[0]):
-                            break
-                        for  attr_mb, attr_gsh in online_attr.items():
-                            if attr_gsh == row[0]:
-                                gdf.iloc[index, max_cols] = get_campaign_info(df, trigger, attr_mb)
-            return gdf
+            def update_campaigns(df, gdf, max_cols):
+                """Assigns new campaign's attribution values to dataframe
+                -> df: dataframe from MindBox report
+                -> gdf: dataframe gspread get_as_dataframe
+                -> max_cols: period column
+                """
+                def get_campaign_info(df, name, column):
+                    """Locates specific value for named campaign"""
+                    try: res = df.loc[df.name == name, column].values[0]
+                    except: res = 0
+                    return res
+                gdf = gdf.reset_index()
+                for channel in self.t.keys():
+                    for trigger, campaign in self.t[channel].items():
+                        campaign_index = gdf[gdf.columns[0]].loc[gdf[gdf.columns[0]] == campaign].index[0]
+                        for index, row in gdf.iloc[campaign_index:].iterrows():
+                            if pd.isnull(row[0]):
+                                break
+                            for  attr_mb, attr_gsh in attr.items():
+                                if attr_gsh == row[0]:
+                                    gdf.iloc[index, max_cols] = get_campaign_info(df, trigger, attr_mb)
+                return gdf
 
-        def build_patch(df):
-            """Returns df as a list of cells to patch for gspread update"""
-            row=1
-            col=1
-            y, x = df.shape
-            updates = []
-            values = []
-            for value_row in df.values:
-                values.append(value_row)
-            for y_idx, value_row in enumerate(values):
-                for x_idx, cell_value in enumerate(value_row):
-                    updates.append(gspread.models.Cell(y_idx+row,
-                                                       x_idx+col,
-                                                       cell_value))
-            return updates
+            def build_patch(df):
+                """Returns df as a list of cells to patch for gspread update"""
+                row=1
+                col=1
+                y, x = df.shape
+                updates = []
+                values = []
+                for value_row in df.values:
+                    values.append(value_row)
+                for y_idx, value_row in enumerate(values):
+                    for x_idx, cell_value in enumerate(value_row):
+                        updates.append(gspread.models.Cell(y_idx+row,
+                                                           x_idx+col,
+                                                           cell_value))
+                return updates
 
-        actual_values = []
-        for channel, values in triggers.triggers.items():
-            for df_trigger in values.keys():
-                actual_values.append(df_trigger)
-        new_campaigns = list(self.df.name.loc[~self.df.name.isin(actual_values)])
-        create_new_campaigns(self.gdf, new_campaigns, self.limit - 1)
-        #self.gdf = update_campaigns(self.df, self.gdf, self.limit - 1)
-        #return build_patch(self.gdf)
+            actual_values = []
+            for channel, values in self.t.items():
+                for df_trigger in values.keys():
+                    actual_values.append(df_trigger)
+            new_campaigns = list(self.df.name.loc[~self.df.name.isin(actual_values)])
+            create_new_campaigns(self.gdf, new_campaigns, self.limit)
+            self.gdf = update_campaigns(self.df, self.gdf, self.limit)
+            return build_patch(self.gdf)
 
     def get_campaigns_offline(self):
         """Offline campaigns weekly, tab 5 on dashboard"""
-        self.df = self.df[(self.df.channel=='Ручные рассылки') & \
-                          (self.df.sent != 0)]
-
+        attr = get_attribution(self.type)
         def get_channel(string):
             string = string.lower()
             if 'sms' in string:
@@ -201,7 +200,7 @@ class Patcher():
         patch = []
         rows = [x for x in range(len(self.df.name.unique()))]
         for ind, name in zip(rows, self.df.name.unique()):
-            for key, column in zip(self.t.offline_attr.keys(), self.d[self.type].values()):
+            for key, column in zip(attr.keys(), self.d[self.type].values()):
                 patch.append(gspread.models.Cell(self.limit+ind, \
                     column, str(self.df.loc[self.df.name == name, key].values[0])))
         return patch
@@ -214,4 +213,11 @@ def put_dictionary(filename, obj):
 def get_dictionary(filename):
     with open(filename, 'rb') as f:
         d = pkl.load(f)
-    return d
+
+def update_dictionary(filename, key, value):
+    tmp = get_dictionary(filename)
+    tmp[key] = value
+    put_dictionary(filename, tmp)
+
+def get_dict_value(dict, key):
+    return get_dictionary(dpath + dict).get(key)

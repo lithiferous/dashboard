@@ -78,6 +78,7 @@ class Patcher():
         new_campaigns = list(self.df.name.loc[~self.df.name.isin(actual_values)])
         create_new_campaigns(self.gdf, new_campaigns, self.limit - 1)
         self.gdf = tab3.update_campaigns(self.df, self.gdf, self.limit - 1, self.t, attr)
+        self.gdf = tab3.fill_main(self.gdf, self.limit)
         return tab3.build_patch(self.gdf)
 
     def get_campaigns_offline(self):

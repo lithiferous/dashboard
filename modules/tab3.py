@@ -110,10 +110,63 @@ def update_campaigns(df, gdf, max_cols,
                         gdf.iloc[index, max_cols] = get_campaign_info(df, trigger, attr_mb)
     return gdf
 
+def get_attr_sum(gdf, channel, max_cols, attr):
+    outlay = get_dict(s.dpath + 'outlay3.pkl')
+    df = pd.DataFrame()
+    if channel == 'Email':
+        df = gdf.iloc[outlay['email']:outlay['wp']]
+    elif channel == 'Web-push':
+        df = gdf.iloc[outlay['wp']:outlay['seasonal']]
+    elif channel == 'Сезонные триггеры ':
+        df = gdf.iloc[outlay['seasonal']:outlay['sms']]
+    indices = df.iloc[:, 0].loc[df.iloc[:, 0].where(df.iloc[:, 0] == attr).notna()].index.values
+    return sum(gdf.iloc[indices, max_cols])
+
+class mainStats():
+    def __init__(self, gdf, max_cols, channel, traffic):
+        self.delivered = get_attr_sum(gdf, channel, max_cols, 'Доставлено')
+        self.opened = get_attr_sum(gdf, channel, max_cols, 'Открытия')
+        self.clicked = get_attr_sum(gdf, channel, max_cols, 'Кликов')
+        self.revenue = get_attr_sum(gdf, channel, max_cols, 'Доход по атрибуции MB')
+        self.orders = get_attr_sum(gdf, channel, max_cols, 'Покупок по атрибуции MB')
+        self.openr = self.opened/self.delivered
+        self.clickr = self.clicked/self.opened
+        self.ord_traffic = self.orders/traffic
+        self.ord_conversion = self.orders/self.delivered
+
+    def switch(self, attr):
+        d = {'Доставлено':self.delivered,
+             'OR':self.openr,
+             'CR':self.clickr,
+             'Выручка':self.revenue,
+             'Заказов':self.orders,
+             'Заказов от трафика':self.ord_traffic,
+             'Конверсия в заказы':self.ord_conversion}
+        return d[attr]
+
+def fill_main(gdf, max_cols):
+    """
+    -> gdf: dataframe of main table
+    """
+    channels = ['Email', 'Web-push', 'Сезонные триггеры ']
+
+    def get_value_index(series, value):
+        series = series.where(series == value)
+        return series.loc[series.notnull()].index[0]
+
+    for channel in channels:
+        idx = get_value_index(gdf.iloc[:, 0], channel)+1
+        stats = mainStats(gdf, max_cols, channel, 1)
+        for ind, row in gdf.loc[idx:].iterrows():
+            if pd.isnull(row[0]):
+                break
+            gdf.iloc[ind, max_cols] = stats.switch(row[0])
+    return gdf
+
 def build_patch(df):
     """Returns df as a list of cells to patch for gspread update"""
-    row=1
-    col=1
+    row = 1
+    col = 1
     y, x = df.shape
     updates = []
     values = []

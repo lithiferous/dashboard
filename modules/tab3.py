@@ -1,24 +1,31 @@
-from gspread.models import Cell
-import imp
+from collections import namedtuple as nt
+from gspread_formatting import *
+from gspread.utils import rowcol_to_a1
 import numpy as np
 import pandas as pd
 import pickle as pkl
 
 dpath = 'config/data/'
 
+
 def get_dict(filename):
     with open(filename, 'rb') as f:
         return pkl.load(f)
 
+
 def get_dict_value(filename, key):
     return get_dict(dpath + filename).get(key)
 
+
 attribution = get_dict_value('attribution.pkl', 2)
+outlay = get_dict(dpath + 'outlay3.pkl')
+
 
 def filter_na(df):
     mask = pd.Series(x is not np.nan for x in df.index.values)
     df = df[mask.values].reset_index().append(pd.Series(), ignore_index=True)
     return df.set_index(df.columns[0])
+
 
 def append_campaign(df, channel, trigger, triggers, attribution):
     """Extends dataframe for each channel's new campaign
@@ -33,6 +40,7 @@ def append_campaign(df, channel, trigger, triggers, attribution):
     df = df.reset_index().append(pd.Series(), ignore_index=True)
     return df.set_index(df.columns[0])
 
+
 def get_new_name(name, channel, triggers):
     print("Нажмите только 'Enter', если название компании Вас устраивает:\nВведите новое название для отображения в Google Sheets")
     new_name = input()
@@ -40,6 +48,7 @@ def get_new_name(name, channel, triggers):
         triggers[channel].update({name:name})
     else:
         triggers[channel].update({name:new_name})
+
 
 def check_new_groups(new_campaigns,
                      main, email, wp,
@@ -49,7 +58,6 @@ def check_new_groups(new_campaigns,
     print("Определите категорию кампании для {n} новых:\n".format(n=maxlen))
 
     i = 0
-    new_names = []
     while(i != maxlen):
         print("Нажмите 'Enter' для Email\n\t'1' для Web-push\n\t'2' для сезонной\n\t'3' для SMS\n")
         v = input('-> ' + new_campaigns[i] + ': \n')
@@ -71,10 +79,10 @@ def check_new_groups(new_campaigns,
                                   triggers, attribution)
         else:
             print("Повторите ввод в согласии с инструкцией\n")
-#update_dictionary(dpath + '/triggers.pkl', type_, triggers)
+# update_dictionary(dpath + '/triggers.pkl', type_, triggers)
     return main.append([email, wp, seasonal, sms])
 
-#New channel start indices e.g. web-push row 379
+
 def reindex_outlay(df, triggers):
     """Update start indices for each channel email/wp/seasonal/sms
     -> df: dataframe from gspread get_as_dataframe
@@ -83,7 +91,8 @@ def reindex_outlay(df, triggers):
     for channel in triggers.keys():
         trigger = list(triggers[channel].values())[0]
         outlay[channel] = np.where(tmp == trigger)[0][0]
-    s.put_dictionary(dpath+'outlay3.pkl', outlay)
+    # put_dictionary(dpath+'outlay3.pkl', outlay)
+
 
 def update_campaigns(df, gdf, max_cols,
                      triggers, attribution):
@@ -105,22 +114,24 @@ def update_campaigns(df, gdf, max_cols,
             for index, row in gdf.iloc[campaign_index:].iterrows():
                 if pd.isnull(row[0]):
                     break
-                for  attr_mb, attr_gsh in attribution.items():
+                for attr_mb, attr_gsh in attribution.items():
                     if attr_gsh == row[0]:
                         gdf.iloc[index, max_cols] = get_campaign_info(df, trigger, attr_mb)
     return gdf
 
+
 def get_attr_sum(gdf, channel, max_cols, attr):
-    outlay = get_dict(s.dpath + 'outlay3.pkl')
+    outlay = get_dict(dpath + 'outlay3.pkl')
     df = pd.DataFrame()
     if channel == 'Email':
         df = gdf.iloc[outlay['email']:outlay['wp']]
     elif channel == 'Web-push':
         df = gdf.iloc[outlay['wp']:outlay['seasonal']]
-    elif channel == 'Сезонные триггеры ':
+    elif channel == 'Сезонные триггеры':
         df = gdf.iloc[outlay['seasonal']:outlay['sms']]
     indices = df.iloc[:, 0].loc[df.iloc[:, 0].where(df.iloc[:, 0] == attr).notna()].index.values
     return sum(gdf.iloc[indices, max_cols])
+
 
 class mainStats():
     def __init__(self, gdf, max_cols, channel, traffic):
@@ -135,20 +146,21 @@ class mainStats():
         self.ord_conversion = self.orders/self.delivered
 
     def switch(self, attr):
-        d = {'Доставлено':self.delivered,
-             'OR':self.openr,
-             'CR':self.clickr,
-             'Выручка':self.revenue,
-             'Заказов':self.orders,
-             'Заказов от трафика':self.ord_traffic,
-             'Конверсия в заказы':self.ord_conversion}
+        d = {'Доставлено':         self.delivered,
+             'OR':                 self.openr,
+             'CR':                 self.clickr,
+             'Выручка':            self.revenue,
+             'Заказов':            self.orders,
+             'Заказов от трафика': self.ord_traffic,
+             'Конверсия в заказы': self.ord_conversion}
         return d[attr]
+
 
 def fill_main(gdf, max_cols):
     """
     -> gdf: dataframe of main table
     """
-    channels = ['Email', 'Web-push', 'Сезонные триггеры ']
+    channels = ['Email', 'Web-push', 'Сезонные триггеры']
 
     def get_value_index(series, value):
         series = series.where(series == value)
@@ -163,16 +175,57 @@ def fill_main(gdf, max_cols):
             gdf.iloc[ind, max_cols] = stats.switch(row[0])
     return gdf
 
-def build_patch(df):
-    """Returns df as a list of cells to patch for gspread update"""
-    row = 1
-    col = 1
-    y, x = df.shape
-    updates = []
-    values = []
-    for value_row in df.values:
-       values.append(value_row)
-    for y_idx, value_row in enumerate(values):
-       for x_idx, cell_value in enumerate(value_row):
-           updates.append(Cell(y_idx+row, x_idx+col, cell_value))
-    return updates
+def build_format_patch(df, limit):
+    """Returns new formats for gspread worksheet"""
+    def create_format_dict(*args):
+        fmt = nt('fmt', ['bold',
+                         'italic',
+                         'alignment',
+                         'background'])
+        return fmt(*args)
+
+    main = create_format_dict(True, False, 'left', color(244, 204, 204))
+    email = create_format_dict(True, True, 'left', color(255, 242, 204))
+    wp = create_format_dict(True, True, 'left', color(208, 224, 227))
+    seasonal = create_format_dict(True, True, 'left', color(217, 210, 233))
+    sms = create_format_dict(True, True, 'left', color(201, 218, 248))
+    ord_conv = create_format_dict(True, False, 'right', color(201, 218, 248))
+
+    main_idx = ['Email', 'Web-push', 'Сезонные триггеры']
+    email_idx = get_dict_value('triggers.pkl', 2)['email'].values()
+    wp_idx = get_dict_value('triggers.pkl', 2)['wp'].values()
+    seasonal_idx = get_dict_value('triggers.pkl', 2)['seasonal'].values()
+    sms_idx = get_dict_value('triggers.pkl', 2)['sms'].values()
+    ord_idx = ['Конверсия в заказы']
+
+    formats = [(main,     main_idx),
+               (email,    email_idx),
+               (wp,       wp_idx),
+               (seasonal, seasonal_idx),
+               (sms,      sms_idx),
+               (ord_conv, ord_idx),]
+
+    def get_format_patch(fmt_, df, limit):
+
+        def get_cell_format(_fmt):
+            return cellFormat(backgroundColor=_fmt.background,
+                   textFormat=textFormat(bold=_fmt.bold, italic=_fmt.italic),
+                              horizontalAlignment=_fmt.alignment.upper())
+
+        def get_fmt_ranges(df, row_vals, max_cols):
+            def get_rows_to_a1(df, values, col):
+                def locate_formats(series, row_val):
+                    return np.where(series == row_val)[0][0] + 2
+                indices = [locate_formats(df.iloc[:, 0], x) for x in values]
+                return [rowcol_to_a1(x, col) for x in indices]
+
+            minr = get_rows_to_a1(df, row_vals, 1)
+            maxr = get_rows_to_a1(df, row_vals, max_cols)
+            ranges = []
+            for x, y in zip(minr, maxr):
+                ranges.append(x + ':' + y)
+            return ranges
+
+        (key, val) = fmt_
+        return (get_cell_format(key), get_fmt_ranges(df, val, limit))
+    return [get_format_patch(fmt, df, limit) for fmt in formats]

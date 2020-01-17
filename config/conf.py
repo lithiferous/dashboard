@@ -1,1 +1,1 @@
-name = 'test dashboard | Перекресток ИМ'
+name = 'new test dashboard'

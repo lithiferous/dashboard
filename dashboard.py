@@ -1,16 +1,18 @@
 from datetime import datetime, timedelta
 import argparse
-import imp
+import warnings
+
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    import imp
 
 c = imp.load_source('conf', 'config/conf.py')
 g = imp.load_source('gsync', 'modules/gCanvas.py')
 s = imp.load_source('patch', 'modules/patcher.py')
 r = imp.load_source('report', 'modules/reader.py')
 
+
 class Dashboard:
-    """
-    Updates google spreadsheet information
-    """
     def __init__(self, report_file,
                        orders_file,
                        clients_file,
@@ -29,36 +31,40 @@ class Dashboard:
                 +'-'+ datetime.today().strftime("%d.%m")
 
     def upload_data(self):
-        sheets = {'2. Триггеры — инкр. нед.':1,
-                  '3. Триггеры — стат. нед.':2,
-                  '4. Триггеры — инкр. месяц':3,
-                  '5. Регулярка — статистика':4,
-                  '6. Когортный по выручке':5,
-                  '7. Когортный по вовлечению':6,
-                  '8. Страт. сегментация':7}
+        sheets = {'2. Триггеры — инкр. нед.':   1,
+                  '3. Триггеры — стат. нед.':   2,
+                  '4. Триггеры — инкр. месяц':  3,
+                  '5. Регулярка — статистика':  4,
+                  '6. Когортный по выручке':    5,
+                  '7. Когортный по вовлечению': 6,
+                  '8. Страт. сегментация':      7}
 
         def patch_wrapper(name, df, connector, limit, gdf):
-            sheet = g.gCanvas(self.connector.get_sheet_by_name(name))
+            # sheet = g.gCanvas(self.connector.get_sheet_by_name(name))
+            sheet = g.gCanvas(self.connector.duplicate_sheet(name, name + ' new'))
+            sheet = g.gCanvas(self.connector.get_sheet_by_name(name + ' new'))
             if limit == 'x':
-                patch = s.Patcher(df, sheets.get(name), sheet.max_cols, gdf).patch
+                patcher = s.Patcher(df, sheets.get(name), sheet.max_cols, gdf)
             else:
-                patch = s.Patcher(df, sheets.get(name), sheet.max_rows).patch
-            return patch
-            sheet.update_batch(patch)
+                patcher = s.Patcher(df, sheets.get(name), sheet.max_rows, gdf)
+            try:
+                sheet.update_batch(patcher.patch)
+            except:
+                sheet.update_with_df(patcher.gdf)
+            return patcher.format
 
         df = r.get_report(self.report, "Свод. данные (online + offline)")
-        results = []
         for sheet in sheets.keys():
             if '2' in sheet:
-                results.append(patch_wrapper(sheet, self.orders, self.connector, 'x'))
+                patch_wrapper(sheet, self.orders, self.connector, 'x', None)
             if '3' in sheet:
                 data = df[df.channel != 'Ручные рассылки']
                 gdf = g.gCanvas(self.connector.get_sheet_by_name(sheet)).get_as_df()
-                results.append(patch_wrapper(sheet, data, self.connector, 'x', gdf))
+                fmt = patch_wrapper(sheet, data, self.connector, 'x', gdf)
+                g.gCanvas(self.connector.get_sheet_by_name(sheet)).format(fmt)
             elif '5' in sheet:
                 data = df[df.channel == 'Ручные рассылки']
-                results.append(patch_wrapper(sheet, data, self.connector, 'y', None))
-        return results
+                patch_wrapper(sheet, data, self.connector, 'y', None)
 
     def run_all(self):
         self.connector = g.Connection(c.name)

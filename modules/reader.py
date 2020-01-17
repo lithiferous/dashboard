@@ -81,10 +81,15 @@ def get_orders(file_orders, file_clients):
     clients = clients[clients.revenue.notna()]
     return clients.reset_index(drop=True)
 
-def get_order_info(file_orders, file_clients, agg_column=None):
+def get_order_info(file_orders, file_clients=None, agg_column=None):
     """
     Creates a dataframe of total orders, revenue, customers for test & control groups.
     """
+    if file_clients != None:
+        file_clients = file_clients
+    else:
+        file_clients = 'data/client_groups.f'
+
     clients = get_orders(file_orders, file_clients)
     if agg_column != None:
         clients = clients.groupby([agg_column])

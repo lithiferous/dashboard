@@ -39,32 +39,25 @@ class Dashboard:
                   '7. Когортный по вовлечению': 6,
                   '8. Страт. сегментация':      7}
 
-        def patch_wrapper(name, df, connector, limit, gdf):
-            # sheet = g.gCanvas(self.connector.get_sheet_by_name(name))
-            sheet = g.gCanvas(self.connector.duplicate_sheet(name, name + ' new'))
-            sheet = g.gCanvas(self.connector.get_sheet_by_name(name + ' new'))
-            if limit == 'x':
-                patcher = s.Patcher(df, sheets.get(name), sheet.max_cols, gdf)
-            else:
-                patcher = s.Patcher(df, sheets.get(name), sheet.max_rows, gdf)
-            try:
-                sheet.update_batch(patcher.patch)
-            except:
-                sheet.update_with_df(patcher.gdf)
-            return patcher.format
-
         df = r.get_report(self.report, "Свод. данные (online + offline)")
         for sheet in sheets.keys():
             if '2' in sheet:
-                patch_wrapper(sheet, self.orders, self.connector, 'x', None)
+                sh = g.gCanvas(self.connector.get_sheet_by_name(sheet))
+                patch = s.Patcher(self.orders, sheets.get(sheet), sh.max_cols)
+                sh.update_batch(patch.patch)
             if '3' in sheet:
                 data = df[df.channel != 'Ручные рассылки']
+                or_sheet = g.gCanvas(self.connector.get_sheet_by_name(sheet))
+                sh = g.gCanvas(self.connector.create_sheet(sheet + ' new'))
                 gdf = g.gCanvas(self.connector.get_sheet_by_name(sheet)).get_as_df()
-                fmt = patch_wrapper(sheet, data, self.connector, 'x', gdf)
-                g.gCanvas(self.connector.get_sheet_by_name(sheet)).format(fmt)
+                patch = s.Patcher(data, sheets.get(sheet), or_sheet.max_rows, gdf)
+                sh.update_with_df(patch.gdf)
+                sh.format(patch.format)
             elif '5' in sheet:
                 data = df[df.channel == 'Ручные рассылки']
-                patch_wrapper(sheet, data, self.connector, 'y', None)
+                sh = g.gCanvas(self.connector.get_sheet_by_name(sheet))
+                patch = s.Patcher(data, sheets.get(sheet), sh.max_rows)
+                sh.update_batch(patch.patch)
 
     def run_all(self):
         self.connector = g.Connection(c.name)

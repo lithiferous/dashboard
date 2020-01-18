@@ -35,8 +35,8 @@ class Connection:
     def get_sheet_by_name(self, sheet_name):
         return self.gcloud.worksheet(sheet_name)
 
-    def create_sheet(self, workbook, new_sheet):
-        return self.get_sheet_by_name(workbook).add_worksheet(new_sheet)
+    def create_sheet(self, new_sheet):
+        return self.gcloud.add_worksheet(new_sheet, rows="100", cols="100")
 
     def list_sheets(self):
         return self.gcloud.worksheets()

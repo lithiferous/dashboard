@@ -184,29 +184,25 @@ def build_format_patch(df, limit):
                          'background'])
         return fmt(*args)
 
-    main = create_format_dict(True, False, 'left', color(244, 204, 204))
-    email = create_format_dict(True, True, 'left', color(255, 242, 204))
-    wp = create_format_dict(True, True, 'left', color(208, 224, 227))
-    seasonal = create_format_dict(True, True, 'left', color(217, 210, 233))
-    sms = create_format_dict(True, True, 'left', color(201, 218, 248))
-    ord_conv = create_format_dict(True, False, 'right', color(201, 218, 248))
+    main = create_format_dict(True, False, 'left', color(244/255, 204/255, 204/255))
+    email = create_format_dict(True, True, 'left', color(255/255, 242/255, 204/255))
+    wp = create_format_dict(True, True, 'left', color(208/255, 224/255, 227/255))
+    seasonal = create_format_dict(True, True, 'left', color(217/255, 210/255, 233/255))
+    sms = create_format_dict(True, True, 'left', color(201/255, 218/255, 248/255))
 
     main_idx = ['Email', 'Web-push', 'Сезонные триггеры']
     email_idx = get_dict_value('triggers.pkl', 2)['email'].values()
     wp_idx = get_dict_value('triggers.pkl', 2)['wp'].values()
     seasonal_idx = get_dict_value('triggers.pkl', 2)['seasonal'].values()
     sms_idx = get_dict_value('triggers.pkl', 2)['sms'].values()
-    ord_idx = ['Конверсия в заказы']
 
     formats = [(main,     main_idx),
                (email,    email_idx),
                (wp,       wp_idx),
                (seasonal, seasonal_idx),
-               (sms,      sms_idx),
-               (ord_conv, ord_idx),]
+               (sms,      sms_idx),]
 
-    def get_format_patch(fmt_, df, limit):
-
+    def get_format_patch(fmt_, df, limit, ranges):
         def get_cell_format(_fmt):
             return cellFormat(backgroundColor=_fmt.background,
                    textFormat=textFormat(bold=_fmt.bold, italic=_fmt.italic),
@@ -227,5 +223,11 @@ def build_format_patch(df, limit):
             return ranges
 
         (key, val) = fmt_
-        return (get_cell_format(key), get_fmt_ranges(df, val, limit))
-    return [get_format_patch(fmt, df, limit) for fmt in formats]
+        _fmt = get_cell_format(key)
+        new_ranges = get_fmt_ranges(df, val, limit)
+        for range in new_ranges:
+            ranges.append((range, _fmt))
+    ranges = []
+    for fmt in formats:
+        get_format_patch(fmt, df, limit, ranges)
+    return ranges

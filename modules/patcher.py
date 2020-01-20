@@ -86,6 +86,16 @@ class Patcher():
             .replace('#DIV/0! (Function DIVIDE parameter 2 cannot be zero.)', '')
         self.gdf.iloc[2:, 4:] = self.gdf.iloc[2:,4:]\
             .astype(str).replace('\.', ',', regex=True)
+
+        def get_pct(cell):
+            if str(cell) != '': return cell + '%'
+            else:               return cell
+
+        values = ['OR', 'CR', 'CTR', "UR", 'Заказов от трафика',
+                  'Конверсия в заказы', 'Отношение выручки к предыдущей неделе',
+                  'Процент отработанных корзин']
+        idx = self.gdf.loc[self.gdf.iloc[:,0].isin(values)].index
+        self.gdf.iloc[idx, 4:] = self.gdf.iloc[idx, 4:].applymap(get_pct)
         return self.gdf
 
     def get_campaigns_offline(self):
@@ -115,7 +125,7 @@ class Patcher():
                 pcts = ['click_rate', 'open_rate', 'CTR', 'unfollow_rate',
                         'avg_bill','order_conversion']
                 if key in pcts:
-                    val = val.replace('.', ',')
+                    val = val.replace('.', ',') + '%'
                 patch.append(gspread.models.Cell(self.limit+ind, column, val))
         return patch
 

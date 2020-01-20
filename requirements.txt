@@ -2,5 +2,6 @@ gspread_dataframe==3.0.3
 gspread==3.1.0
 numpy==1.17.2
 pandas==0.25.1
+pyarrow==0.15.1
 oauth2client==4.1.3
 gspread_formatting==0.0.7

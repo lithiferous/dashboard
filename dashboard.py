@@ -50,7 +50,7 @@ class Dashboard:
                 or_sheet = g.gCanvas(self.connector.get_sheet_by_name(sheet))
                 sh = g.gCanvas(self.connector.create_sheet(sheet + ' new'))
                 gdf = g.gCanvas(self.connector.get_sheet_by_name(sheet)).get_as_df()
-                patch = s.Patcher(data, sheets.get(sheet), or_sheet.max_rows, gdf)
+                patch = s.Patcher(data, sheets.get(sheet), or_sheet.max_cols, gdf)
                 sh.update_with_df(patch.gdf)
                 sh.format(patch.format)
             elif '5' in sheet:

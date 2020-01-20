@@ -3,6 +3,7 @@ import gspread
 import imp
 import pandas as pd
 import pickle as pkl
+import re
 
 dpath = 'config/data/'
 tab3 = imp.load_source('online_campaigns', 'modules/tab3.py')
@@ -80,10 +81,11 @@ class Patcher():
         create_new_campaigns(self.gdf, new_campaigns, self.limit - 1)
         self.gdf = tab3.update_campaigns(self.df, self.gdf, self.limit - 1, self.t, attr)
         self.gdf = tab3.fill_main(self.gdf, self.limit - 1)
-        # self.gdf.iloc[:, self.limit - 1] = self.gdf.iloc[:, self.limit - 1] \
-        #                                .apply(lambda x: str(x).replace('.0', '')\
-        #                                .replace('nan', ''))
         self.format = tab3.build_format_patch(self.gdf, self.limit)
+        self.gdf = self.gdf.fillna('')\
+            .replace('#DIV/0! (Function DIVIDE parameter 2 cannot be zero.)', '')
+        self.gdf.iloc[2:, 4:] = self.gdf.iloc[2:,4:]\
+            .astype(str).replace('\.', ',', regex=True)
         return self.gdf
 
     def get_campaigns_offline(self):
@@ -109,8 +111,12 @@ class Patcher():
         rows = [x for x in range(len(self.df.name.unique()))]
         for ind, name in zip(rows, self.df.name.unique()):
             for key, column in zip(attr.keys(), self.d[self.type].values()):
-                patch.append(gspread.models.Cell(self.limit+ind, \
-                    column, str(self.df.loc[self.df.name == name, key].values[0])))
+                val = str(self.df.loc[self.df.name == name, key].values[0])
+                pcts = ['click_rate', 'open_rate', 'CTR', 'unfollow_rate',
+                        'avg_bill','order_conversion']
+                if key in pcts:
+                    val = val.replace('.', ',')
+                patch.append(gspread.models.Cell(self.limit+ind, column, val))
         return patch
 
 

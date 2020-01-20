@@ -11,12 +11,13 @@ def get_report(filename, sheet):
     """
     df = pd.read_excel(filename, sheet_name=sheet)
     ind = df.loc[df.iloc[:,0] == 'Бренд'].index[0]
-    df = df.iloc[ind+2:, 4:-1]
-    header = ['name', 'channel', 'subject', 'preview_url',
-              'sent', 'delivered', 'deliver_rate', 'opened',
-              'open_rate', 'clicked', 'click_rate', 'CTR',
-              'unfollowed', 'unfollow_rate', 'revenue', 'orders',
-              'avg_bill', 'order_conversion']
+    df = df.iloc[ind+2:, :-1]
+    header = ['brand', 'campaign', 'tag', 'date',
+          'name', 'channel', 'subject', 'preview_url',
+          'sent', 'delivered', 'deliver_rate', 'opened',
+          'open_rate', 'clicked', 'click_rate', 'CTR',
+          'unfollowed', 'unfollow_rate', 'revenue', 'orders',
+          'avg_bill', 'order_conversion']
     df.columns = header
     df[['sent', 'delivered', 'opened', 'clicked',
         'unfollowed', 'revenue', 'orders']] = \

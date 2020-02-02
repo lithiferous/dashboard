@@ -53,10 +53,14 @@ class Dashboard:
                 patch = s.Patcher(data, sheets.get(sheet), or_sheet.max_cols, gdf)
                 sh.update_with_df(patch.gdf)
                 sh.format(patch.format)
-            elif '5' in sheet:
+            if '5' in sheet:
                 data = df[df.channel == 'Ручные рассылки']
                 sh = g.gCanvas(self.connector.get_sheet_by_name(sheet))
                 patch = s.Patcher(data, sheets.get(sheet), sh.max_rows)
+                sh.update_batch(patch.patch)
+            if '7' in sheet:
+                sh = g.gCanvas(self.connector.get_sheet_by_name(sheet))
+                patch = s.Patcher(self.orders, sheets.get(sheet), sh.max_cols)
                 sh.update_batch(patch.patch)
 
     def run_all(self):

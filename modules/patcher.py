@@ -3,11 +3,10 @@ import gspread
 import imp
 import pandas as pd
 import pickle as pkl
-import re
 
 dpath = 'config/data/'
 tab3 = imp.load_source('online_campaigns', 'modules/tab3.py')
-
+tab8 = imp.load_source('strat_segmentation', 'modules/tab8.py')
 
 class Patcher():
     methods = {0: None,
@@ -17,7 +16,7 @@ class Patcher():
                4: "get_campaigns_offline",
                5: None,
                6: None,
-               7: None}
+               7: "get_strat_segmentation"}
 
     def __init__(self, df, type, limit, gdf=None):
         """
@@ -31,7 +30,6 @@ class Patcher():
         self.type = type
         self.limit = limit
         self.gdf = gdf if isinstance(gdf, pd.DataFrame) else None
-        self.format = None
         self.d = get_dict('data/cell_dicts.pkl')
         self.t = get_dict_value('triggers.pkl', type)
         self.patch = self.switch()
@@ -70,7 +68,7 @@ class Patcher():
             del gdf
             self.gdf = tab3.check_new_groups(new_campaigns, main, email, wp,
                                              seasonal, sms, self.t, self.type)
-            # tab3.reindex_outlay(self.gdf, self.t)
+            #tab3.reindex_outlay(self.gdf, self.t)
             del main, email, wp, seasonal, sms
 
         actual_values = []
@@ -80,7 +78,7 @@ class Patcher():
         new_campaigns = list(self.df.name.loc[~self.df.name.isin(actual_values)])
         create_new_campaigns(self.gdf, new_campaigns, self.limit - 1)
         self.gdf = tab3.update_campaigns(self.df, self.gdf, self.limit - 1, self.t, attr)
-        self.gdf = tab3.fill_main(self.gdf, self.limit - 1)
+        # self.gdf = tab3.fill_main(self.gdf, self.limit - 1)
         self.format = tab3.build_format_patch(self.gdf, self.limit)
         self.gdf = self.gdf.fillna('')\
             .replace('#DIV/0! (Function DIVIDE parameter 2 cannot be zero.)', '')
@@ -127,6 +125,15 @@ class Patcher():
                 if key in pcts:
                     val = val.replace('.', ',') + '%'
                 patch.append(gspread.models.Cell(self.limit+ind, column, val))
+        return patch
+
+
+    def get_strat_segmentation(self):
+        """Strategic segmentation weekly, tab 8 on dashboard"""
+        res = tab8.build_segmentation(self.df)
+        patch = []
+        for (name, row), val in zip(self.d[self.type].items(), res):
+            patch.append(gspread.models.Cell(row, self.limit, str(val)))
         return patch
 
 

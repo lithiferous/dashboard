@@ -111,13 +111,15 @@ def append_new_orders(orders, new_orders):
     pd.reset_option('mode.chained_assignment')
     with pd.option_context('mode.chained_assignment', None):
         new_orders['revenue'] = new_orders.revenue.astype('int64')
-        new_orders['date_ord'] = pd.to_datetime(new_orders.date_ord)
+        new_orders['date_ord'] = pd.to_datetime(new_orders.date_ord, format=("%d.%m.%y %H:%S"))
         new_orders['date_ord'] = new_orders.date_ord.dt.strftime('%Y-%m-%d')
-        new_orders['date_ord'] = pd.to_datetime(new_orders.date_ord)
+        new_orders['date_ord'] = pd.to_datetime(new_orders.date_ord, format=("%Y-%m-%d"))
         new_orders = new_orders.sort_values('date_ord').reset_index(drop=True)
 
     orders = pd.read_feather(orders)
-    orders = orders.append(new_orders, ignore_index = True)
+    orders = orders.append(new_orders, ignore_index=True, sort=False)
+    orders = orders.loc[~orders.duplicated()].reset_index(drop=True)
+    orders = orders.sort_values('date_ord').reset_index(drop=True)
     orders.to_feather('data/cohort/orders.f')
     return orders
 

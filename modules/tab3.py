@@ -79,7 +79,7 @@ def check_new_groups(new_campaigns,
                                   triggers, attribution)
         else:
             print("Повторите ввод в согласии с инструкцией\n")
-# update_dictionary(dpath + '/triggers.pkl', type_, triggers)
+    #update_dictionary(dpath + '/triggers.pkl', type_, triggers)
     return main.append([email, wp, seasonal, sms])
 
 
@@ -91,7 +91,7 @@ def reindex_outlay(df, triggers):
     for channel in triggers.keys():
         trigger = list(triggers[channel].values())[0]
         outlay[channel] = np.where(tmp == trigger)[0][0]
-    # put_dictionary(dpath+'outlay3.pkl', outlay)
+    #put_dictionary(dpath+'outlay3.pkl', outlay)
 
 
 def update_campaigns(df, gdf, max_cols,
@@ -110,13 +110,16 @@ def update_campaigns(df, gdf, max_cols,
     gdf = gdf.reset_index()
     for channel in triggers.keys():
         for trigger, campaign in triggers[channel].items():
-            campaign_index = gdf[gdf.columns[0]].loc[gdf[gdf.columns[0]] == campaign].index[0]
-            for index, row in gdf.iloc[campaign_index:].iterrows():
-                if pd.isnull(row[0]):
-                    break
-                for attr_mb, attr_gsh in attribution.items():
-                    if attr_gsh == row[0]:
-                        gdf.iloc[index, max_cols] = get_campaign_info(df, trigger, attr_mb)
+            try:
+                campaign_index = gdf[gdf.columns[0]].loc[gdf[gdf.columns[0]] == campaign].index[0]
+                for index, row in gdf.iloc[campaign_index:].iterrows():
+                    if pd.isnull(row[0]):
+                        break
+                    for attr_mb, attr_gsh in attribution.items():
+                        if attr_gsh == row[0]:
+                            gdf.iloc[index, max_cols] = get_campaign_info(df, trigger, attr_mb)
+            except:
+                continue
     return gdf
 
 
@@ -211,6 +214,7 @@ def build_format_patch(df, limit):
         def get_fmt_ranges(df, row_vals, max_cols):
             def get_rows_to_a1(df, values, col):
                 def locate_formats(series, row_val):
+                    print(row_val)
                     return np.where(series == row_val)[0][0] + 2
                 indices = [locate_formats(df.iloc[:, 0], x) for x in values]
                 return [rowcol_to_a1(x, col) for x in indices]

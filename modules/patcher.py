@@ -6,6 +6,7 @@ import pickle as pkl
 
 dpath = 'config/data/'
 tab3 = imp.load_source('online_campaigns', 'modules/tab3.py')
+tab5 = imp.load_source('offline_campaigns', 'modules/tab5.py')
 tab8 = imp.load_source('strat_segmentation', 'modules/tab8.py')
 
 class Patcher():
@@ -14,7 +15,7 @@ class Patcher():
                2: "get_campaigns_online",
                3: None,
                4: "get_campaigns_offline",
-               5: None,
+               5: "get_campaigns_offline",
                6: None,
                7: "get_strat_segmentation"}
 
@@ -49,7 +50,7 @@ class Patcher():
         return patch
 
     def get_campaigns_online(self):
-        """Online campaigns tab 3 (weekly) or tab 4 (monthly) on dashboard"""
+        """Online campaigns tab 3 (weekly) on dashboard"""
         attr = get_dict_value('attribution.pkl', self.type)
 
         def create_new_campaigns(gdf, new_campaigns, max_cols):
@@ -97,36 +98,16 @@ class Patcher():
         return self.gdf
 
     def get_campaigns_offline(self):
-        """Offline campaigns weekly, tab 5 on dashboard"""
+        """Offline campaigns tab 5 (weekly) on dashboard"""
         attr = get_dict_value('attribution.pkl', self.type)
-
-        def get_channel(string):
-            string = string.lower()
-            if 'sms' in string:
-                return 'SMS'
-            elif 'web-push' in string or 'wp' in string:
-                return 'Web-push'
-            else:
-                return 'Email'
-
-        pd.reset_option('mode.chained_assignment')
-        with pd.option_context('mode.chained_assignment', None):
-            self.df['date_new'] = self.df.date.apply(lambda x: dt.strftime(x, format='%d.%m'))
-            self.df['time'] = self.df.date.apply(lambda x: dt.strftime(x, format='%H:%M'))
-            self.df['channel'] = self.df.name.map(get_channel)
-
+        self.df = tab5.format_data(self.df)
         patch = []
         rows = [x for x in range(len(self.df.name.unique()))]
         for ind, name in zip(rows, self.df.name.unique()):
             for key, column in zip(attr.keys(), self.d[self.type].values()):
                 val = str(self.df.loc[self.df.name == name, key].values[0])
-                pcts = ['click_rate', 'open_rate', 'CTR', 'unfollow_rate',
-                        'avg_bill','order_conversion']
-                if key in pcts:
-                    val = val.replace('.', ',') + '%'
                 patch.append(gspread.models.Cell(self.limit+ind, column, val))
         return patch
-
 
     def get_strat_segmentation(self):
         """Strategic segmentation weekly, tab 8 on dashboard"""

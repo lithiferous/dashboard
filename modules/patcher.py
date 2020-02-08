@@ -13,9 +13,9 @@ class Patcher():
     methods = {0: None,
                1: "get_group_increments",
                2: "get_campaigns_online",
-               3: None,
-               4: "get_campaigns_offline",
-               5: "get_campaigns_offline",
+               3: "get_campaigns_offline_monthly",
+               4: "get_campaigns_offline_weekly",
+               5: None,
                6: None,
                7: "get_strat_segmentation"}
 
@@ -36,7 +36,7 @@ class Patcher():
         self.patch = self.switch()
 
     def switch(self):
-        """Performs tabwise patch enrichment"""
+        """Performs tabwise patch update"""
         return getattr(self, self.methods[self.type])()
 
     def get_group_increments(self):
@@ -88,7 +88,7 @@ class Patcher():
 
         def get_pct(cell):
             if str(cell) != '': return cell + '%'
-            else:               return cell
+            else: return cell
 
         values = ['OR', 'CR', 'CTR', "UR", 'Заказов от трафика',
                   'Конверсия в заказы', 'Отношение выручки к предыдущей неделе',
@@ -97,7 +97,7 @@ class Patcher():
         self.gdf.iloc[idx, 4:] = self.gdf.iloc[idx, 4:].applymap(get_pct)
         return self.gdf
 
-    def get_campaigns_offline(self):
+    def get_campaigns_offline_weekly(self):
         """Offline campaigns tab 5 (weekly) on dashboard"""
         attr = get_dict_value('attribution.pkl', self.type)
         self.df = tab5.format_data(self.df)

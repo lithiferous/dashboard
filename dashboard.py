@@ -19,8 +19,9 @@ class Dashboard:
                        period):
         self.connector = None
         self.report = report_file
-        self.orders =  r.get_order_info(orders_file, clients_file, 'group')
+        self.orders = None
         self.period = self.get_report_period(period)
+        self.orders_file = orders_file
 
     def get_report_period(self, delta):
         """
@@ -43,6 +44,7 @@ class Dashboard:
         for sheet in sheets.keys():
             if '2' in sheet:
                 sh = g.gCanvas(self.connector.get_sheet_by_name(sheet))
+                self.orders = r.get_order_info(self.orders_file, 'group')
                 patch = s.Patcher(self.orders, sheets.get(sheet), sh.max_cols)
                 sh.update_batch(patch.patch)
             if '3' in sheet:
@@ -53,6 +55,8 @@ class Dashboard:
                 patch = s.Patcher(data, sheets.get(sheet), or_sheet.max_cols, gdf)
                 sh.update_with_df(patch.gdf)
                 sh.format(patch.format)
+            if '4' in sheet:
+                p = r.get_order_info(self.orders_file, 'group')
             if '5' in sheet:
                 data = df[df.channel == 'Ручные рассылки']
                 sh = g.gCanvas(self.connector.get_sheet_by_name(sheet))

@@ -65,19 +65,23 @@ def get_test_control(file_test, file_control):
 def get_orders(file_orders, file_clients):
     """
     Returns a dataframe of orders for given file_clients ids
-    -> file_orders: weekly client orders csv
+    -> file_orders: weekly client orders csv or dataframe
     -> file_clients: test & control client ids from mindbox csv
     """
-    orders = pd.read_csv(file_orders, sep = ',')
-    orders.columns = ['id_ord', 'route', 'date', 'date_delivery',
-                      'status', 'status_reason', 'delivery',
-                      'payment_type','revenue', 'id_cust',
-                      'client','phone', 'email']
-    orders = orders[['id_ord', 'revenue', 'id_cust']]
+    if isinstance(file_orders, str):
+        orders = pd.read_csv(file_orders, sep = ',')
+        orders.columns = ['id_ord', 'route', 'date', 'date_delivery',
+                          'status', 'status_reason', 'delivery',
+                          'payment_type', 'revenue', 'id_cust',
+                          'client', 'phone', 'email']
+        orders = orders[['id_ord', 'revenue', 'id_cust']]
+    elif isinstance(file_orders, pd.DataFrame):
+        orders = file_orders
     try:
         clients = pd.read_feather(file_clients)
     except:
-        clients = get_test_control('data/groups/test.csv', 'data/groups/control.csv')
+        clients = get_test_control('data/groups/test.csv',\
+                                   'data/groups/control.csv')
     clients = clients.join(orders.set_index('id_cust'),on='id_cust')
     clients = clients[clients.revenue.notna()]
     return clients.reset_index(drop=True)
@@ -122,7 +126,3 @@ def append_new_orders(orders, new_orders):
     orders = orders.sort_values('date_ord').reset_index(drop=True)
     orders.to_feather('data/cohort/orders.f')
     return orders
-
-def unprotect_excel(excel_file):
-    with zipfile.ZipFile(excel_file, 'r') as zip:
-        zip.extractall('data/report')

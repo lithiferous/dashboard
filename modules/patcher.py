@@ -69,7 +69,7 @@ class Patcher():
             del gdf
             self.gdf = tab3.check_new_groups(new_campaigns, main, email, wp,
                                              seasonal, sms, self.t, self.type)
-            #tab3.reindex_outlay(self.gdf, self.t)
+            tab3.reindex_outlay(self.gdf, self.t)
             del main, email, wp, seasonal, sms
 
         actual_values = []
@@ -79,7 +79,7 @@ class Patcher():
         new_campaigns = list(self.df.name.loc[~self.df.name.isin(actual_values)])
         create_new_campaigns(self.gdf, new_campaigns, self.limit - 1)
         self.gdf = tab3.update_campaigns(self.df, self.gdf, self.limit - 1, self.t, attr)
-        # self.gdf = tab3.fill_main(self.gdf, self.limit - 1)
+        self.gdf = tab3.fill_main(self.gdf, self.limit - 1)
         self.format = tab3.build_format_patch(self.gdf, self.limit)
         self.gdf = self.gdf.fillna('')\
             .replace('#DIV/0! (Function DIVIDE parameter 2 cannot be zero.)', '')

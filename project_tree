@@ -1,0 +1,46 @@
+.
+├── config
+│   ├── conf.py
+│   ├── creds_bq.json
+│   ├── creds_gs.json
+│   └── data
+│       ├── attribution.pkl                   // Google document related data internal
+│       ├── outlay3.pkl
+│       └── triggers.pkl
+├── dashboard.ipynb
+├── data
+│   ├── cell_dicts.pkl
+│   ├── client_groups.f
+│   ├── cohort
+│   │   ├── clients.csv                       // Client registration data from MindBox
+│   │   └── orders.f
+│   ├── groups
+│   │   ├── control.csv                       // Control, test groups from MindBox
+│   │   └── test.csv
+│   └── increment
+│       └── trigger
+│           ├── global_control_2.csv
+│           ├── global_test_2.csv
+│           └── trigger_control.csv
+├── __init__.py
+├── modules                                   // Project modules used to process data
+│   ├── dashboard.py
+│   ├── gCanvas.py
+│   ├── patcher.py
+│   ├── reader.py
+│   ├── tab3.py
+│   ├── tab4.py
+│   ├── tab5.py
+│   └── tab8.py
+├── orders_2020-02-18_10-51-49.csv
+├── project_tree
+├── report.xlsx
+├── requirements.txt
+└── tests
+    ├── all.xlsx
+    ├── init_dicts.ipynb
+    ├── test.ipynb
+    ├── tools.ipynb
+    └── tools test.ipynb
+
+9 directories, 34 files

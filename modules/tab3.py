@@ -17,6 +17,13 @@ def get_dict_value(filename, key):
     return get_dict(dpath + filename).get(key)
 
 
+
+def update_dictionary(filename, key, value):
+    tmp = get_dict(filename)
+    tmp[key] = value
+    put_dict(filename, tmp)
+
+
 attribution = get_dict_value('attribution.pkl', 2)
 outlay = get_dict(dpath + 'outlay3.pkl')
 
@@ -79,7 +86,7 @@ def check_new_groups(new_campaigns,
                                   triggers, attribution)
         else:
             print("Повторите ввод в согласии с инструкцией\n")
-    #update_dictionary(dpath + '/triggers.pkl', type_, triggers)
+    update_dictionary(dpath + '/triggers.pkl', type_, triggers)
     return main.append([email, wp, seasonal, sms])
 
 
@@ -91,7 +98,7 @@ def reindex_outlay(df, triggers):
     for channel in triggers.keys():
         trigger = list(triggers[channel].values())[0]
         outlay[channel] = np.where(tmp == trigger)[0][0]
-    #put_dictionary(dpath+'outlay3.pkl', outlay)
+    put_dictionary(dpath+'outlay3.pkl', outlay)
 
 
 def update_campaigns(df, gdf, max_cols,

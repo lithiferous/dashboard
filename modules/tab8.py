@@ -3,14 +3,13 @@ from datetime import timedelta
 import pandas as pd
 import re
 
-def build_segmentation(orders):
+def build_segmentation(orders, date):
     """
     Returns strategic segmentation dictionary that counts number of clients on condition
     -> clients_file: mindbox csv with fields: mindbox id, email, external id, registration date
     -> orders: feather dataframe from 'data/cohort/orders.f'
     -> date: datetime
     """
-    date = dt.today()
     clients_file = 'data/cohort/clients.csv'
     df = pd.read_csv(clients_file, sep=';', low_memory=False)
     df.columns = ['id_cli', 'email', 'id_cust', 'date_reg']
